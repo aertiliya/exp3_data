@@ -90,11 +90,18 @@ def train():
         
         if v_acc > best_val_acc:
             best_val_acc = v_acc
-            save_path = str(config.OUTPUT_DIR / 'best_model.pth')
-            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(), 'val_acc': v_acc},
-                       save_path)
-            print(f"✓ Saved best model | Val Acc: {v_acc:.4f}")
+            
+            # 关键修复：确保 outputs 目录一定存在
+            save_path = config.OUTPUT_DIR / 'best_model.pth'
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'val_acc': v_acc,
+            }, save_path)
+            print(f"✓ Saved new best model to {save_path} | Val Acc: {v_acc:.4f}")
             patience_counter = 0
         else:
             patience_counter += 1
