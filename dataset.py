@@ -15,6 +15,10 @@ class FatigueVideoDataset(Dataset):
         self.img_size = img_size
         self.is_train = is_train
         self.samples = []
+        
+        # 检测是否使用预提取的图片数据
+        self.use_preprocessed = self._detect_preprocessed()
+        
         self._load_samples()
         
         # 数据增强
@@ -38,22 +42,58 @@ class FatigueVideoDataset(Dataset):
                                    std=[0.229, 0.224, 0.225])
             ])
     
+    def _detect_preprocessed(self):
+        """检测是否使用预提取的图片数据"""
+        # 检查任意一个类别目录下是否有jpg文件
+        for class_name in self.classes:
+            class_dir = self.root_dir / class_name
+            if class_dir.exists():
+                jpg_files = list(class_dir.glob("*_frame0.jpg"))
+                if jpg_files:
+                    return True
+        return False
+    
     def _load_samples(self):
-        """加载所有视频样本"""
+        """加载所有样本"""
         for class_idx, class_name in enumerate(self.classes):
             class_dir = self.root_dir / class_name
             if not class_dir.exists():
                 print(f"Warning: {class_dir} does not exist")
                 continue
             
-            video_files = list(class_dir.glob("*.mp4"))
-            print(f"Loaded {len(video_files)} videos from {class_name}")
-            
-            for video_path in video_files:
-                self.samples.append((str(video_path), class_idx, class_name))
+            if self.use_preprocessed:
+                # 加载预提取的图片帧
+                # 获取所有唯一的视频stem（去掉_frameX.jpg后缀）
+                all_files = list(class_dir.glob("*_frame0.jpg"))
+                for frame_path in all_files:
+                    stem = frame_path.stem.replace("_frame0", "")
+                    self.samples.append((str(class_dir), class_idx, class_name, stem))
+                print(f"Loaded {len(all_files)} preprocessed samples from {class_name}")
+            else:
+                # 加载原始视频
+                video_files = list(class_dir.glob("*.mp4"))
+                print(f"Loaded {len(video_files)} videos from {class_name}")
+                
+                for video_path in video_files:
+                    self.samples.append((str(video_path), class_idx, class_name, None))
     
-    def _sample_frames(self, video_path):
-        """均匀采样视频帧"""
+    def _load_preprocessed_frames(self, class_dir, stem):
+        """加载预提取的图片帧"""
+        frames = []
+        class_dir = Path(class_dir)
+        for i in range(self.num_frames):
+            img_path = class_dir / f"{stem}_frame{i}.jpg"
+            if img_path.exists():
+                frame = cv2.imread(str(img_path))
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frames.append(frame)
+            else:
+                # 如果图片不存在，用黑帧代替
+                frames.append(np.zeros((self.img_size, self.img_size, 3), dtype=np.uint8))
+        return frames
+    
+    def _sample_frames_from_video(self, video_path):
+        """从视频中均匀采样帧"""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             print(f"Error opening video: {video_path}")
@@ -87,13 +127,18 @@ class FatigueVideoDataset(Dataset):
         return len(self.samples)
     
     def __getitem__(self, idx):
-        video_path, label, class_name = self.samples[idx]
+        if self.use_preprocessed:
+            class_dir, label, class_name, stem = self.samples[idx]
+            frames = self._load_preprocessed_frames(class_dir, stem)
+            filename = f"{stem}.mp4"
+        else:
+            video_path, label, class_name, _ = self.samples[idx]
+            frames = self._sample_frames_from_video(video_path)
+            filename = os.path.basename(video_path)
         
-        # 采样帧
-        frames = self._sample_frames(video_path)
         if frames is None:
             # 如果加载失败，返回随机噪声
-            frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) 
+            frames = [np.random.randint(0, 255, (self.img_size, self.img_size, 3), dtype=np.uint8) 
                      for _ in range(self.num_frames)]
         
         # 对每帧应用变换
@@ -105,7 +150,7 @@ class FatigueVideoDataset(Dataset):
         # [num_frames, C, H, W]
         video_tensor = torch.stack(frames_tensor)
         
-        return video_tensor, label, os.path.basename(video_path)
+        return video_tensor, label, filename
 
 
 def create_dataloaders(config):
@@ -133,7 +178,7 @@ def create_dataloaders(config):
     
     # 计算类别权重（处理不平衡）
     class_counts = [0] * config.NUM_CLASSES
-    for _, label, _ in train_dataset.samples:
+    for _, label, _, _ in train_dataset.samples:
         class_counts[label] += 1
     
     total_samples = sum(class_counts)
@@ -143,28 +188,36 @@ def create_dataloaders(config):
     print(f"\nClass distribution in training set: {class_counts}")
     print(f"Class weights: {class_weights}")
     
+    # 如果使用预提取数据，可以增加num_workers
+    num_workers = config.NUM_WORKERS
+    if train_dataset.use_preprocessed and config.DEVICE == 'cuda':
+        num_workers = 2  # 预提取数据可以安全使用多进程
+    
     train_loader = DataLoader(
         train_dataset, 
         batch_size=config.BATCH_SIZE, 
         shuffle=True,
-        num_workers=config.NUM_WORKERS,
-        pin_memory=True if config.DEVICE == 'cuda' else False
+        num_workers=num_workers,
+        pin_memory=True if config.DEVICE == 'cuda' else False,
+        persistent_workers=True if num_workers > 0 else False
     )
     
     val_loader = DataLoader(
         val_dataset, 
         batch_size=config.BATCH_SIZE,
         shuffle=False,
-        num_workers=config.NUM_WORKERS,
-        pin_memory=True if config.DEVICE == 'cuda' else False
+        num_workers=num_workers,
+        pin_memory=True if config.DEVICE == 'cuda' else False,
+        persistent_workers=True if num_workers > 0 else False
     )
     
     test_loader = DataLoader(
         test_dataset, 
         batch_size=config.BATCH_SIZE,
         shuffle=False,
-        num_workers=config.NUM_WORKERS,
-        pin_memory=True if config.DEVICE == 'cuda' else False
+        num_workers=num_workers,
+        pin_memory=True if config.DEVICE == 'cuda' else False,
+        persistent_workers=True if num_workers > 0 else False
     )
     
     return train_loader, val_loader, test_loader, class_weights
