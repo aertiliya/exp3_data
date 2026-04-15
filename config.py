@@ -65,16 +65,16 @@ else:
     NUM_WORKERS = 0
 
 # ========== 训练配置 ==========
-EPOCHS = 30
-LEARNING_RATE = 1e-4    # 降低学习率，防初期震荡
+EPOCHS = 40
+LEARNING_RATE = 5e-5    # 冻结后需更小LR防震荡
 WEIGHT_DECAY = 1e-3     # 保持权重衰减
-DROPOUT = 0.6           # 分类头dropout加强
-LABEL_SMOOTHING = 0.1   # 开启标签平滑，压制过度自信
+DROPOUT = 0.5           # 分类头dropout
+LABEL_SMOOTHING = 0.15  # 增强标签平滑正则
 DEVICE = 'cuda' if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '') else 'cpu'  # Kaggle自动用GPU
 
 # ========== 模型配置 ==========
-MODEL_NAME = 'resnet18_avgpool'
-EARLY_STOPPING_PATIENCE = 10  # 10轮足够，避免在过拟合区徘徊
+MODEL_NAME = 'resnet18_avgpool_frozen'
+EARLY_STOPPING_PATIENCE = 15  # 给更多收敛时间
 
 # ========== 输出配置 ==========
 OUTPUT_DIR = Path("outputs")

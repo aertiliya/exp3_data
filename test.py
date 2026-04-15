@@ -33,14 +33,22 @@ def test_model():
     all_probs = []
     all_filenames = []
     
-    print("Testing...")
+    print("Testing with TTA...")
     with torch.no_grad():
         for videos, labels, filenames in test_loader:
             videos = videos.to(config.DEVICE)
-            outputs = model(videos)
-            probs = torch.softmax(outputs, dim=1)
-            _, preds = outputs.max(1)
-            
+
+            # 原始预测
+            logits_orig = model(videos)
+            # TTA：水平翻转预测
+            videos_flip = torch.flip(videos, dims=[-1])  # 翻转宽度维度
+            logits_flip = model(videos_flip)
+
+            # 融合 logits（比融合概率更稳定）
+            logits = (logits_orig + logits_flip) / 2.0
+            probs = torch.softmax(logits, dim=1)
+            _, preds = logits.max(1)
+
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.numpy())
             all_probs.extend(probs.cpu().numpy())

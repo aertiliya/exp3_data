@@ -33,5 +33,15 @@ class VideoClassifier(nn.Module):
         return self.classifier(pooled)
 
 
-def create_model(num_classes=3, pretrained=True):
-    return VideoClassifier(num_classes=num_classes, pretrained=pretrained)
+def create_model(num_classes=3, pretrained=True, freeze_backbone=True):
+    model = VideoClassifier(num_classes=num_classes, pretrained=pretrained)
+
+    if freeze_backbone:
+        # 冻结浅层（conv1, bn1, layer1），保留深层可训练
+        freeze_layers = ['conv1', 'bn1', 'layer1']
+        for name, param in model.backbone.named_parameters():
+            if any(layer in name for layer in freeze_layers):
+                param.requires_grad = False
+        print("✅ Frozen backbone layers: conv1, bn1, layer1")
+
+    return model

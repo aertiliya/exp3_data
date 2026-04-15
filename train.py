@@ -12,6 +12,21 @@ from model import create_model
 import json
 
 
+class FocalLoss(nn.Module):
+    """Focal Loss - gamma=1.0温和聚焦难样本"""
+    def __init__(self, alpha=None, gamma=1.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        return focal_loss.mean() if self.reduction == 'mean' else focal_loss.sum()
+
+
 def train_epoch(model, loader, criterion, optimizer, device):
     """训练一个epoch"""
     model.train()
@@ -77,12 +92,8 @@ def train():
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True)
     model = model.to(config.DEVICE)
     
-    # 损失函数：CrossEntropy + Label Smoothing + 类别权重（稳定版）
-    label_smoothing = getattr(config, 'LABEL_SMOOTHING', 0.1)
-    criterion = nn.CrossEntropyLoss(
-        weight=class_weights.to(config.DEVICE),
-        label_smoothing=label_smoothing
-    )
+    # 损失函数：Focal Loss gamma=1.0 + 类别权重（温和聚焦难样本）
+    criterion = FocalLoss(alpha=class_weights.to(config.DEVICE), gamma=1.0)
 
     # 优化器
     optimizer = optim.AdamW(model.parameters(),
