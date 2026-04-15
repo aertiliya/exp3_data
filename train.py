@@ -51,7 +51,7 @@ def train():
         label_smoothing=getattr(config, 'LABEL_SMOOTHING', 0.1)
     )
     optimizer = optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4)
     
     best_val_acc, patience_counter = 0.0, 0
     history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
