@@ -5,26 +5,42 @@ from pathlib import Path
 # 自动检测运行环境并设置正确的数据路径
 # 优先级：预提取数据 > 原始视频数据
 
-if os.path.exists("/kaggle/working/exp3_data/data_processed"):
-    # Kaggle环境 - 预提取的帧图片（最快）
-    DATA_ROOT = Path("/kaggle/working/exp3_data/data_processed")
-    print("✅ Using preprocessed frame images (fastest)")
-elif os.path.exists("data_processed"):
-    # 本地或Kaggle - 预提取的帧图片
-    DATA_ROOT = Path("data_processed")
-    print("✅ Using preprocessed frame images (fastest)")
-elif os.path.exists("/kaggle/input/datasets/cartiliya/videodata"):
-    # Kaggle环境 - 原始数据集路径
-    DATA_ROOT = Path("/kaggle/input/datasets/cartiliya/videodata")
-    print("⚠️ Using original videos (slow)")
-elif os.path.exists("/kaggle/working/exp3_data/data"):
-    # Kaggle环境 - 软链接路径
-    DATA_ROOT = Path("/kaggle/working/exp3_data/data")
-    print("⚠️ Using original videos (slow)")
-else:
-    # 本地环境
-    DATA_ROOT = Path("数据带干扰")
-    print("⚠️ Using original videos (slow)")
+# 获取当前文件所在目录
+CURRENT_DIR = Path(__file__).parent
+
+# 检查预提取数据路径（多个可能位置）
+PREPROCESSED_PATHS = [
+    Path("/kaggle/working/data_processed"),              # Kaggle实际路径
+    Path("/kaggle/working/exp3_data/data_processed"),  # Kaggle备用路径
+    CURRENT_DIR / "data_processed",                      # 相对当前文件
+    Path("data_processed"),                              # 相对工作目录
+]
+
+DATA_ROOT = None
+for path in PREPROCESSED_PATHS:
+    if path.exists():
+        # 验证是否真的有预提取的数据（检查是否有jpg文件）
+        for class_name in ['Normal', 'Yawning', 'Microsleep']:
+            class_dir = path / "Train" / class_name
+            if class_dir.exists() and list(class_dir.glob("*_frame0.jpg")):
+                DATA_ROOT = path
+                print(f"✅ Using preprocessed frame images: {path}")
+                break
+        if DATA_ROOT:
+            break
+
+if DATA_ROOT is None:
+    # 未找到预提取数据，使用原始视频
+    video_paths = [
+        ("/kaggle/input/datasets/cartiliya/videodata", "Kaggle 原始数据集"),
+        ("/kaggle/working/exp3_data/data", "Kaggle 软链接"),
+        ("数据带干扰", "本地数据"),
+    ]
+    for path_str, desc in video_paths:
+        if os.path.exists(path_str):
+            DATA_ROOT = Path(path_str)
+            print(f"⚠️ Using original videos ({desc}): {path_str}")
+            break
 
 TRAIN_DIR = DATA_ROOT / "Train"
 VAL_DIR = DATA_ROOT / "Val"
@@ -65,5 +81,6 @@ OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 print(f"Using device: {DEVICE}")
+
 print(f"Num frames per video: {NUM_FRAMES}")
 print(f"Batch size: {BATCH_SIZE}")
