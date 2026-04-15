@@ -27,7 +27,7 @@ NUM_FRAMES = 8  # 每个视频采样8帧
 if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', ''):
     # Kaggle GPU环境
     BATCH_SIZE = 16  # 增大batch size充分利用GPU
-    NUM_WORKERS = 2  # 多进程数据加载
+    NUM_WORKERS = 0  # Kaggle上多进程容易出问题，设为0
 else:
     # 本地CPU环境
     BATCH_SIZE = 4
