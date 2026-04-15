@@ -58,6 +58,9 @@ def validate(model, loader, criterion, device):
     return running_loss / len(loader), correct / total
 
 def train():
+    # 确保输出目录存在
+    config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
     train_loader, val_loader, _, class_weights = create_dataloaders(config)
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True).to(config.DEVICE)
     
