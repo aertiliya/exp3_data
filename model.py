@@ -6,7 +6,7 @@ import config
 
 class TemporalBiGRU(nn.Module):
     """轻量级双向GRU时序建模（路线C）"""
-    def __init__(self, input_size=512, hidden_size=256, num_layers=1):
+    def __init__(self, input_size=512, hidden_size=256, num_layers=2):
         super().__init__()
         self.gru = nn.GRU(input_size, hidden_size, num_layers,
                           batch_first=True, bidirectional=True, dropout=0.3)
