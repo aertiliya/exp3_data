@@ -1,6 +1,7 @@
 """
 预提取视频帧为图片，训练时直接读图片，避免实时解码
 """
+import os
 import cv2
 import numpy as np
 from pathlib import Path
