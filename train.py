@@ -8,6 +8,22 @@ import config
 from dataset import create_dataloaders
 from model import create_model
 
+
+class FocalLoss(nn.Module):
+    """Focal Loss - gamma=2.0 强聚焦难分类样本"""
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        return focal_loss.mean() if self.reduction == 'mean' else focal_loss.sum()
+
+
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
     running_loss, correct, total = 0.0, 0, 0
@@ -45,11 +61,8 @@ def train():
     train_loader, val_loader, _, class_weights = create_dataloaders(config)
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True).to(config.DEVICE)
     
-    # 稳定组合：类别权重 + 标签平滑
-    criterion = nn.CrossEntropyLoss(
-        weight=class_weights.to(config.DEVICE),
-        label_smoothing=getattr(config, 'LABEL_SMOOTHING', 0.1)
-    )
+    # Focal Loss + 类别权重（强聚焦难样本）
+    criterion = FocalLoss(alpha=class_weights.to(config.DEVICE), gamma=2.0)
     optimizer = optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4)
     
