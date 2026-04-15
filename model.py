@@ -9,7 +9,7 @@ class TemporalBiGRU(nn.Module):
     def __init__(self, input_size=512, hidden_size=256, num_layers=1):
         super().__init__()
         self.gru = nn.GRU(input_size, hidden_size, num_layers,
-                          batch_first=True, bidirectional=True)
+                          batch_first=True, bidirectional=True, dropout=0.3)
         self.attn = nn.Linear(hidden_size * 2, 1)  # 注意力权重
         self.norm = nn.LayerNorm(hidden_size * 2)
 
