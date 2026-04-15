@@ -2,7 +2,17 @@ import os
 from pathlib import Path
 
 # ========== 路径配置 ==========
-DATA_ROOT = Path("数据带干扰")  # 修改为你的数据路径
+# 自动检测运行环境并设置正确的数据路径
+if os.path.exists("/kaggle/input/datasets/cartiliya/videodata"):
+    # Kaggle环境 - 原始数据集路径
+    DATA_ROOT = Path("/kaggle/input/datasets/cartiliya/videodata")
+elif os.path.exists("/kaggle/working/exp3_data/data"):
+    # Kaggle环境 - 软链接路径
+    DATA_ROOT = Path("/kaggle/working/exp3_data/data")
+else:
+    # 本地环境
+    DATA_ROOT = Path("数据带干扰")
+
 TRAIN_DIR = DATA_ROOT / "Train"
 VAL_DIR = DATA_ROOT / "Val"
 TEST_DIR = DATA_ROOT / "Test"
