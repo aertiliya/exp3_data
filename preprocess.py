@@ -56,15 +56,27 @@ def preprocess_dataset(split_dir, output_root, num_frames=4, img_size=224):
 if __name__ == '__main__':
     # 预提取所有split
     PREPROCESSED_ROOT = Path("data_processed")
-    
+
+    # 自动检测原始视频路径
+    if os.path.exists("/kaggle/input/datasets/cartiliya/videodata"):
+        VIDEO_ROOT = Path("/kaggle/input/datasets/cartiliya/videodata")
+    elif os.path.exists("/kaggle/working/exp3_data/data"):
+        VIDEO_ROOT = Path("/kaggle/working/exp3_data/data")
+    elif os.path.exists("数据带干扰"):
+        VIDEO_ROOT = Path("数据带干扰")
+    else:
+        VIDEO_ROOT = Path("data")  # 默认路径
+
+    print(f"Using video source: {VIDEO_ROOT}")
+
     for split in ['Train', 'Val', 'Test']:
         print(f"\n{'='*40}\nProcessing {split} split\n{'='*40}")
         preprocess_dataset(
-            config.DATA_ROOT / split,
+            VIDEO_ROOT / split,
             PREPROCESSED_ROOT,
             num_frames=config.NUM_FRAMES,
             img_size=config.IMG_SIZE
         )
-    
+
     print(f"\n✅ 预提取完成！数据已保存到: {PREPROCESSED_ROOT}")
-    print("下一步：修改 config.py 中的 DATA_ROOT 指向预处理后的路径")
+    print(f"共处理: {len(list(PREPROCESSED_ROOT.glob('**/*.jpg')))} 张图片")
