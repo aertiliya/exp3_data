@@ -20,16 +20,18 @@ TEST_DIR = DATA_ROOT / "Test"
 # ========== 数据配置 ==========
 CLASSES = ['Normal', 'Yawning', 'Microsleep']
 NUM_CLASSES = 3
-IMG_SIZE = 224
-NUM_FRAMES = 8  # 每个视频采样8帧
 
-# GPU优化配置
+# GPU性能优化：降低分辨率减少IO瓶颈
 if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', ''):
-    # Kaggle GPU环境
-    BATCH_SIZE = 16  # 增大batch size充分利用GPU
-    NUM_WORKERS = 0  # Kaggle上多进程容易出问题，设为0
+    # Kaggle GPU环境 - 优化配置
+    IMG_SIZE = 112        # 降低分辨率加速加载
+    NUM_FRAMES = 4        # 减少帧数
+    BATCH_SIZE = 32       # 更大batch充分利用GPU
+    NUM_WORKERS = 0
 else:
     # 本地CPU环境
+    IMG_SIZE = 224
+    NUM_FRAMES = 8
     BATCH_SIZE = 4
     NUM_WORKERS = 0
 
