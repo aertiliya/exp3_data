@@ -36,9 +36,9 @@ class FatigueVideoDataset(Dataset):
                 transforms.RandomGrayscale(p=0.1),  # 新增灰度化
                 transforms.GaussianBlur(kernel_size=(3, 7), sigma=(0.1, 3.0)),  # 模拟模糊
 
-                # 对抗性增强：模拟遮挡/噪声
-                transforms.RandomErasing(p=0.3, scale=(0.02, 0.2), ratio=(0.3, 3.3)),  # 随机擦除
                 transforms.ToTensor(),
+                # 对抗性增强：模拟遮挡/噪声（必须在ToTensor之后）
+                transforms.RandomErasing(p=0.3, scale=(0.02, 0.2), ratio=(0.3, 3.3)),  # 随机擦除
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])
             ])
