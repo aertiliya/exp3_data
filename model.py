@@ -14,13 +14,13 @@ class VideoClassifier(nn.Module):
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
         self.features = nn.Sequential(*list(self.backbone.children())[:-1])
 
-        # 加入 GRU 处理时序动态特征
-        self.gru = nn.GRU(input_size=512, hidden_size=256, num_layers=1, batch_first=True)
+        # 加入双向GRU处理时序动态特征
+        self.gru = nn.GRU(input_size=512, hidden_size=256, num_layers=1, batch_first=True, bidirectional=True)
 
         dropout_rate = getattr(config, 'DROPOUT', 0.5)
         self.classifier = nn.Sequential(
             nn.Dropout(dropout_rate),
-            nn.Linear(256, num_classes)
+            nn.Linear(512, num_classes)  # 双向GRU输出维度翻倍
         )
 
     def forward(self, x):

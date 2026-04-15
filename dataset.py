@@ -1,5 +1,5 @@
 import os, cv2, numpy as np, torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from pathlib import Path
 from torchvision import transforms
 import config
@@ -73,14 +73,27 @@ def create_dataloaders(cfg):
     tr = FatigueVideoDataset(cfg.TRAIN_DIR, cfg.CLASSES, cfg.NUM_FRAMES, cfg.IMG_SIZE, True)
     va = FatigueVideoDataset(cfg.VAL_DIR, cfg.CLASSES, cfg.NUM_FRAMES, cfg.IMG_SIZE, False)
     te = FatigueVideoDataset(cfg.TEST_DIR, cfg.CLASSES, cfg.NUM_FRAMES, cfg.IMG_SIZE, False)
-    
+
     counts = [sum(1 for _, l, _, _ in tr.samples if l==i) for i in range(cfg.NUM_CLASSES)]
     total = sum(counts)
     weights = torch.FloatTensor([total/(cfg.NUM_CLASSES*c) for c in counts])
-    print(f"\nClass dist: {counts}\nWeights: {weights}")
-    
-    kw = {'batch_size': cfg.BATCH_SIZE, 'num_workers': cfg.NUM_WORKERS, 
+    print(f"\nClass dist: {counts}\nLoss Weights: {weights}")
+
+    # ========== 新增：WeightedRandomSampler物理重采样 ==========
+    # 为每个样本计算采样权重（少数类样本权重更高）
+    sample_weights = [total / counts[label] for _, label, _, _ in tr.samples]
+    sampler = WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(tr.samples),  # 保持每个epoch样本总数不变
+        replacement=True  # 允许重复采样少数类（微睡眠）
+    )
+    print(f"✅ Using WeightedRandomSampler for balanced training batches")
+    # ==========================================================
+
+    kw = {'batch_size': cfg.BATCH_SIZE, 'num_workers': cfg.NUM_WORKERS,
           'pin_memory': cfg.DEVICE=='cuda', 'persistent_workers': cfg.NUM_WORKERS>0}
-    return (DataLoader(tr, shuffle=True, **kw),
+
+    # 注意：使用sampler时，必须把shuffle设为False
+    return (DataLoader(tr, sampler=sampler, **kw),
             DataLoader(va, shuffle=False, **kw),
             DataLoader(te, shuffle=False, **kw), weights)
