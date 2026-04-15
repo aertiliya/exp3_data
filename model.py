@@ -3,54 +3,57 @@ import torch.nn as nn
 from torchvision import models
 import config
 
+
+class TemporalBiGRU(nn.Module):
+    """轻量级双向GRU时序建模（路线C）"""
+    def __init__(self, input_size=512, hidden_size=256, num_layers=1):
+        super().__init__()
+        self.gru = nn.GRU(input_size, hidden_size, num_layers,
+                          batch_first=True, bidirectional=True, dropout=0.3)
+        self.attn = nn.Linear(hidden_size * 2, 1)  # 注意力权重
+        self.norm = nn.LayerNorm(hidden_size * 2)
+
+    def forward(self, x):
+        # x: [B, T, 512]
+        gru_out, _ = self.gru(x)  # [B, T, 512]
+
+        # 注意力池化：让模型关注关键帧（如闭眼瞬间、打哈欠峰值）
+        attn_weights = torch.softmax(self.attn(gru_out), dim=1)  # [B, T, 1]
+        context = torch.sum(gru_out * attn_weights, dim=1)       # [B, 512]
+
+        return self.norm(context)
+
+
 class VideoClassifier(nn.Module):
     """
-    基线模型：ResNet18 + 时序平均池化
-    架构：对每帧提取特征 → 平均池化 → 分类
+    ResNet18 + BiGRU + 注意力池化
+    路线C：时序建模改进
     """
-    def __init__(self, num_classes=3, pretrained=True, dropout=None):
-        super(VideoClassifier, self).__init__()
-        
-        # 使用预训练的ResNet18作为特征提取器
+    def __init__(self, num_classes=3, pretrained=True):
+        super().__init__()
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
-        
-        # 移除最后的全连接层，只保留特征提取部分
         self.features = nn.Sequential(*list(self.backbone.children())[:-1])
-        
-        # 从配置读取dropout，如果没有则使用默认值
-        dropout_rate = dropout if dropout is not None else getattr(config, 'DROPOUT', 0.5)
-        
-        # 新的分类头
+
+        # 时序模块（路线C）
+        self.temporal = TemporalBiGRU(input_size=512, hidden_size=256)
+
+        # 分类头
+        dropout_rate = getattr(config, 'DROPOUT', 0.5)
         self.classifier = nn.Sequential(
             nn.Dropout(dropout_rate),
             nn.Linear(512, num_classes)
         )
-    
+
     def forward(self, x):
-        """
-        x: [batch_size, num_frames, C, H, W]
-        """
-        batch_size, num_frames, c, h, w = x.shape
-        
-        # 重塑为 [batch_size * num_frames, C, H, W]
-        x = x.view(-1, c, h, w)
-        
-        # 提取每帧特征: [batch_size * num_frames, 512, 1, 1]
-        features = self.features(x)
-        
-        # 展平: [batch_size * num_frames, 512]
-        features = features.view(-1, 512)
-        
-        # 重塑回视频级别: [batch_size, num_frames, 512]
-        features = features.view(batch_size, num_frames, 512)
-        
-        # 时序平均池化: [batch_size, 512]
-        video_features = features.mean(dim=1)
-        
-        # 分类: [batch_size, num_classes]
-        logits = self.classifier(video_features)
-        
-        return logits
+        B, T, C, H, W = x.shape
+        # 空间特征提取
+        x = x.view(B * T, C, H, W)
+        feats = self.features(x)  # [B*T, 512, 1, 1]
+        feats = feats.view(B, T, 512)  # [B, T, 512]
+
+        # 时序建模 + 注意力池化
+        video_feat = self.temporal(feats)  # [B, 512]
+        return self.classifier(video_feat)
 
 
 def create_model(num_classes=3, pretrained=True):

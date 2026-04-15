@@ -50,12 +50,12 @@ TEST_DIR = DATA_ROOT / "Test"
 CLASSES = ['Normal', 'Yawning', 'Microsleep']
 NUM_CLASSES = 3
 
-# GPU性能优化：降低分辨率减少IO瓶颈
+# GPU性能优化：时序建模配置
 if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', ''):
-    # Kaggle GPU环境 - 优化配置
-    IMG_SIZE = 112        # 降低分辨率加速加载
-    NUM_FRAMES = 4        # 减少帧数
-    BATCH_SIZE = 32       # 更大batch充分利用GPU
+    # Kaggle GPU环境 - 优化配置（路线C时序建模）
+    IMG_SIZE = 112        # 保持112平衡速度与精度
+    NUM_FRAMES = 8        # 增加到8帧给时序建模足够信息
+    BATCH_SIZE = 16       # 帧数增加后适当减小batch
     NUM_WORKERS = 0
 else:
     # 本地CPU环境
@@ -66,15 +66,15 @@ else:
 
 # ========== 训练配置 ==========
 EPOCHS = 30
-LEARNING_RATE = 5e-5  # 降低学习率
-WEIGHT_DECAY = 1e-3   # 增加权重衰减
-DROPOUT = 0.7         # 增加Dropout
-LABEL_SMOOTHING = 0.1 # 标签平滑
+LEARNING_RATE = 2e-4    # 稍大初始LR配合Warmup
+WEIGHT_DECAY = 1e-3     # 保持权重衰减
+DROPOUT = 0.6           # 分类头dropout加强
+LABEL_SMOOTHING = 0.1   # 开启标签平滑防过拟合
 DEVICE = 'cuda' if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '') else 'cpu'  # Kaggle自动用GPU
 
 # ========== 模型配置 ==========
-MODEL_NAME = 'resnet18_baseline'
-EARLY_STOPPING_PATIENCE = 10
+MODEL_NAME = 'resnet18_bgru_attention'
+EARLY_STOPPING_PATIENCE = 15  # 给模型更多探索空间
 
 # ========== 输出配置 ==========
 OUTPUT_DIR = Path("outputs")

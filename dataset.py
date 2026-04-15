@@ -21,15 +21,17 @@ class FatigueVideoDataset(Dataset):
         
         self._load_samples()
         
-        # 数据增强
+        # 数据增强 - 强化版（防过拟合）
         if is_train:
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)),
                 transforms.RandomHorizontalFlip(),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                transforms.RandomRotation(12),               # 新增：模拟头部姿态变化
+                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # 新增：模拟光照/模糊
+                transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])
             ])
         else:

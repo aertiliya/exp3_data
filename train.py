@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR
 import numpy as np
 from tqdm import tqdm
 import time
@@ -10,6 +10,21 @@ import config
 from dataset import create_dataloaders
 from model import create_model
 import json
+
+
+class FocalLoss(nn.Module):
+    """Focal Loss - 聚焦难样本，提升Microsleep召回率（路线D）"""
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha  # 类别权重
+        self.gamma = gamma  # 聚焦参数
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        return focal_loss.mean() if self.reduction == 'mean' else focal_loss.sum()
 
 def train_epoch(model, loader, criterion, optimizer, device):
     """训练一个epoch"""
@@ -76,21 +91,16 @@ def train():
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True)
     model = model.to(config.DEVICE)
     
-    # 损失函数（带类别权重和标签平滑）
-    label_smoothing = getattr(config, 'LABEL_SMOOTHING', 0.0)
-    criterion = nn.CrossEntropyLoss(
-        weight=class_weights.to(config.DEVICE),
-        label_smoothing=label_smoothing
-    )
-    
+    # 损失函数：Focal Loss + 类别权重（路线D）
+    criterion = FocalLoss(alpha=class_weights.to(config.DEVICE), gamma=2.0)
+
     # 优化器
-    optimizer = optim.AdamW(model.parameters(), 
+    optimizer = optim.AdamW(model.parameters(),
                            lr=config.LEARNING_RATE,
                            weight_decay=config.WEIGHT_DECAY)
-    
-    # 学习率调度器
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, 
-                                  patience=5)
+
+    # 学习率调度器：CosineAnnealingLR（平滑衰减）
+    scheduler = CosineAnnealingLR(optimizer, T_max=config.EPOCHS, eta_min=1e-6)
     
     # 训练记录
     best_val_acc = 0.0
@@ -121,8 +131,8 @@ def train():
         print(f"\nTrain Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
         
-        # 学习率调整
-        scheduler.step(val_acc)
+        # 学习率调整（CosineAnnealingLR）
+        scheduler.step()
         
         # 保存最佳模型
         if val_acc > best_val_acc:
