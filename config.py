@@ -66,14 +66,14 @@ else:
 
 # ========== 训练配置 ==========
 EPOCHS = 40
-LEARNING_RATE = 5e-5    # 冻结后需更小LR防震荡
+LEARNING_RATE = 3e-5    # 冻结更多层后需更小LR
 WEIGHT_DECAY = 1e-3     # 保持权重衰减
-DROPOUT = 0.5           # 分类头dropout
-LABEL_SMOOTHING = 0.15  # 增强标签平滑正则
+DROPOUT = 0.6           # 增强正则
+LABEL_SMOOTHING = 0.15  # 防止对干扰样本过度自信
 DEVICE = 'cuda' if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '') else 'cpu'  # Kaggle自动用GPU
 
 # ========== 模型配置 ==========
-MODEL_NAME = 'resnet18_avgpool_frozen'
+MODEL_NAME = 'resnet18_frozen_l2'
 EARLY_STOPPING_PATIENCE = 15  # 给更多收敛时间
 
 # ========== 输出配置 ==========

@@ -21,17 +21,24 @@ class FatigueVideoDataset(Dataset):
         
         self._load_samples()
         
-        # 数据增强 - 强化版（防过拟合）
+        # 数据增强 - 超强版（模拟各种干扰）
         if is_train:
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
-                transforms.RandomResizedCrop(img_size, scale=(0.75, 1.0)),
+                # 空间增强：模拟姿态/遮挡变化
+                transforms.RandomResizedCrop(img_size, scale=(0.7, 1.0), ratio=(0.8, 1.2)),
                 transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(15),               # 增强：模拟头部姿态变化
-                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # 模拟光照/模糊
-                transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
+                transforms.RandomRotation(20),  # 增大角度
+                transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),  # 新增平移
+
+                # 光度增强：模拟光照/画质干扰
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.3, hue=0.05),
+                transforms.RandomGrayscale(p=0.1),  # 新增灰度化
+                transforms.GaussianBlur(kernel_size=(3, 7), sigma=(0.1, 3.0)),  # 模拟模糊
+
+                # 对抗性增强：模拟遮挡/噪声
+                transforms.RandomErasing(p=0.3, scale=(0.02, 0.2), ratio=(0.3, 3.3)),  # 随机擦除
                 transforms.ToTensor(),
-                transforms.RandomErasing(p=0.3, scale=(0.02, 0.15), ratio=(0.3, 3.3)),  # 新增：随机擦除
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])
             ])
