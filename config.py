@@ -21,9 +21,17 @@ TEST_DIR = DATA_ROOT / "Test"
 CLASSES = ['Normal', 'Yawning', 'Microsleep']
 NUM_CLASSES = 3
 IMG_SIZE = 224
-NUM_FRAMES = 8  # CPU友好，每个视频采样8帧
-BATCH_SIZE = 4  # CPU环境用小batch
-NUM_WORKERS = 0  # Windows CPU建议设为0
+NUM_FRAMES = 8  # 每个视频采样8帧
+
+# GPU优化配置
+if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', ''):
+    # Kaggle GPU环境
+    BATCH_SIZE = 16  # 增大batch size充分利用GPU
+    NUM_WORKERS = 2  # 多进程数据加载
+else:
+    # 本地CPU环境
+    BATCH_SIZE = 4
+    NUM_WORKERS = 0
 
 # ========== 训练配置 ==========
 EPOCHS = 30
