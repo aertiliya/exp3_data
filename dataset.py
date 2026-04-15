@@ -25,12 +25,13 @@ class FatigueVideoDataset(Dataset):
         if is_train:
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
-                transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(12),               # 新增：模拟头部姿态变化
-                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # 新增：模拟光照/模糊
+                transforms.RandomResizedCrop(img_size, scale=(0.75, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomRotation(15),               # 增强：模拟头部姿态变化
+                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # 模拟光照/模糊
                 transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
                 transforms.ToTensor(),
+                transforms.RandomErasing(p=0.3, scale=(0.02, 0.15), ratio=(0.3, 3.3)),  # 新增：随机擦除
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])
             ])

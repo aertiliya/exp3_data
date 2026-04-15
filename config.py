@@ -66,15 +66,15 @@ else:
 
 # ========== 训练配置 ==========
 EPOCHS = 30
-LEARNING_RATE = 2e-4    # 稍大初始LR配合Warmup
+LEARNING_RATE = 1e-4    # 降低学习率，防初期震荡
 WEIGHT_DECAY = 1e-3     # 保持权重衰减
 DROPOUT = 0.6           # 分类头dropout加强
-LABEL_SMOOTHING = 0.1   # 开启标签平滑防过拟合
+LABEL_SMOOTHING = 0.1   # 开启标签平滑，压制过度自信
 DEVICE = 'cuda' if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '') else 'cpu'  # Kaggle自动用GPU
 
 # ========== 模型配置 ==========
-MODEL_NAME = 'resnet18_bgru_attention'
-EARLY_STOPPING_PATIENCE = 15  # 给模型更多探索空间
+MODEL_NAME = 'resnet18_avgpool'
+EARLY_STOPPING_PATIENCE = 10  # 10轮足够，避免在过拟合区徘徊
 
 # ========== 输出配置 ==========
 OUTPUT_DIR = Path("outputs")
