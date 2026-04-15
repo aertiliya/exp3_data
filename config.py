@@ -3,15 +3,28 @@ from pathlib import Path
 
 # ========== 路径配置 ==========
 # 自动检测运行环境并设置正确的数据路径
-if os.path.exists("/kaggle/input/datasets/cartiliya/videodata"):
+# 优先级：预提取数据 > 原始视频数据
+
+if os.path.exists("/kaggle/working/exp3_data/data_processed"):
+    # Kaggle环境 - 预提取的帧图片（最快）
+    DATA_ROOT = Path("/kaggle/working/exp3_data/data_processed")
+    print("✅ Using preprocessed frame images (fastest)")
+elif os.path.exists("data_processed"):
+    # 本地或Kaggle - 预提取的帧图片
+    DATA_ROOT = Path("data_processed")
+    print("✅ Using preprocessed frame images (fastest)")
+elif os.path.exists("/kaggle/input/datasets/cartiliya/videodata"):
     # Kaggle环境 - 原始数据集路径
     DATA_ROOT = Path("/kaggle/input/datasets/cartiliya/videodata")
+    print("⚠️ Using original videos (slow)")
 elif os.path.exists("/kaggle/working/exp3_data/data"):
     # Kaggle环境 - 软链接路径
     DATA_ROOT = Path("/kaggle/working/exp3_data/data")
+    print("⚠️ Using original videos (slow)")
 else:
     # 本地环境
     DATA_ROOT = Path("数据带干扰")
+    print("⚠️ Using original videos (slow)")
 
 TRAIN_DIR = DATA_ROOT / "Train"
 VAL_DIR = DATA_ROOT / "Val"
