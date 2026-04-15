@@ -86,7 +86,7 @@ def train():
     
     # 学习率调度器
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, 
-                                  patience=5, verbose=True)
+                                  patience=5)
     
     # 训练记录
     best_val_acc = 0.0
