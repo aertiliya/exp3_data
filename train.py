@@ -90,9 +90,10 @@ def train():
         
         if v_acc > best_val_acc:
             best_val_acc = v_acc
-            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(), 
+            save_path = str(config.OUTPUT_DIR / 'best_model.pth')
+            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(), 'val_acc': v_acc},
-                       config.OUTPUT_DIR / 'best_model.pth')
+                       save_path)
             print(f"✓ Saved best model | Val Acc: {v_acc:.4f}")
             patience_counter = 0
         else:
