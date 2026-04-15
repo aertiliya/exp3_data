@@ -83,7 +83,7 @@ def test_model():
         'filename': all_filenames,
         'true_label': [config.CLASSES[l] for l in all_labels],
         'pred_label': [config.CLASSES[p] for p in all_preds],
-        'confidence': [max(probs[i]) for i in range(len(all_preds))]
+        'confidence': [all_probs[i][p] for i, p in enumerate(all_preds)]
     })
     pred_df.to_csv(config.OUTPUT_DIR / 'pred_test.csv', index=False)
     print(f"Predictions saved to: {config.OUTPUT_DIR / 'pred_test.csv'}")

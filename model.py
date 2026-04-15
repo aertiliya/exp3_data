@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 from torchvision import models
+import config
 
 class VideoClassifier(nn.Module):
     """
     基线模型：ResNet18 + 时序平均池化
     架构：对每帧提取特征 → 平均池化 → 分类
     """
-    def __init__(self, num_classes=3, pretrained=True):
+    def __init__(self, num_classes=3, pretrained=True, dropout=None):
         super(VideoClassifier, self).__init__()
         
         # 使用预训练的ResNet18作为特征提取器
@@ -16,9 +17,12 @@ class VideoClassifier(nn.Module):
         # 移除最后的全连接层，只保留特征提取部分
         self.features = nn.Sequential(*list(self.backbone.children())[:-1])
         
+        # 从配置读取dropout，如果没有则使用默认值
+        dropout_rate = dropout if dropout is not None else getattr(config, 'DROPOUT', 0.5)
+        
         # 新的分类头
         self.classifier = nn.Sequential(
-            nn.Dropout(0.5),
+            nn.Dropout(dropout_rate),
             nn.Linear(512, num_classes)
         )
     

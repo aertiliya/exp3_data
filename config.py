@@ -27,8 +27,10 @@ NUM_WORKERS = 0  # Windows CPU建议设为0
 
 # ========== 训练配置 ==========
 EPOCHS = 30
-LEARNING_RATE = 1e-4
-WEIGHT_DECAY = 1e-4
+LEARNING_RATE = 5e-5  # 降低学习率
+WEIGHT_DECAY = 1e-3   # 增加权重衰减
+DROPOUT = 0.7         # 增加Dropout
+LABEL_SMOOTHING = 0.1 # 标签平滑
 DEVICE = 'cuda' if os.environ.get('KAGGLE_KERNEL_RUN_TYPE', '') else 'cpu'  # Kaggle自动用GPU
 
 # ========== 模型配置 ==========

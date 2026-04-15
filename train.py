@@ -76,8 +76,12 @@ def train():
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True)
     model = model.to(config.DEVICE)
     
-    # 损失函数（带类别权重）
-    criterion = nn.CrossEntropyLoss(weight=class_weights.to(config.DEVICE))
+    # 损失函数（带类别权重和标签平滑）
+    label_smoothing = getattr(config, 'LABEL_SMOOTHING', 0.0)
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights.to(config.DEVICE),
+        label_smoothing=label_smoothing
+    )
     
     # 优化器
     optimizer = optim.AdamW(model.parameters(), 
