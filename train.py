@@ -64,8 +64,7 @@ def train():
     train_loader, val_loader, _, class_weights = create_dataloaders(config)
     model = create_model(num_classes=config.NUM_CLASSES, pretrained=True).to(config.DEVICE)
     
-    # Focal Loss + 类别权重（强聚焦难样本）
-    criterion = FocalLoss(alpha=class_weights.to(config.DEVICE), gamma=2.0)
+    criterion = FocalLoss(alpha=None, gamma=2.0)
     optimizer = optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4)
     

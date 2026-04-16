@@ -31,10 +31,10 @@ class VideoClassifier(nn.Module):
 
         # 经过 GRU
         gru_out, _ = self.gru(feats)           # [B, T, 256]
-        # 取最后一个时间步的输出作为整个视频段的特征
-        last_out = gru_out[:, -1, :]           # [B, 256]
+        # 对所有时间步取平均，综合考虑整个视频片段的疲劳动作
+        avg_out = gru_out.mean(dim=1)           # [B, 256]
 
-        return self.classifier(last_out)
+        return self.classifier(avg_out)
 
 
 def create_model(num_classes=3, pretrained=True, freeze_backbone=True):
