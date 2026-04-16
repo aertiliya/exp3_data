@@ -23,35 +23,29 @@ except ImportError:
 # 加载 OpenCV 自带的人脸检测器
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-def crop_face_and_resize(frame, img_size=224):
-    """检测人脸并裁剪，然后resize"""
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
+def get_face_bbox(frame):
+    """获取人脸边界框（缩小图检测加速）"""
+    small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+    gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
+    
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3)
     
     if len(faces) > 0:
-        # 假设最大的框是驾驶员的脸
         x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+        x, y, w, h = x * 2, y * 2, w * 2, h * 2
         
-        # 向外扩展边界框 (Padding 20%)
         padding = int(w * 0.2)
         x1 = max(0, x - padding)
         y1 = max(0, y - padding)
         x2 = min(frame.shape[1], x + w + padding)
         y2 = min(frame.shape[0], y + h + padding)
-        
-        # 裁剪人脸区域
-        frame = frame[y1:y2, x1:x2]
+        return (x1, y1, x2, y2)
     else:
-        # 没检测到脸时的 fallback：裁剪画面中央区域
         h, w, _ = frame.shape
-        frame = frame[h//4:h*3//4, w//4:w*3//4]
-    
-    # 裁剪完之后再 resize
-    frame = cv2.resize(frame, (img_size, img_size))
-    return frame
+        return (w//4, h//4, w*3//4, h*3//4)
 
 def extract_frames_decord(video_path, output_dir, num_frames=4, img_size=224):
-    """使用 Decord 快速提取视频帧（支持随机访问）"""
+    """使用 Decord 快速提取视频帧（首帧检测+全视频复用坐标）"""
     try:
         vr = VideoReader(str(video_path), ctx=cpu(0))
         total_frames = len(vr)
@@ -60,26 +54,27 @@ def extract_frames_decord(video_path, output_dir, num_frames=4, img_size=224):
             return False
         
         frame_indices = np.linspace(0, total_frames - 1, num_frames, dtype=int)
-        
-        # Decord 可以一次性批量获取所有目标帧，无需逐个 seek！
         frames = vr.get_batch(frame_indices).asnumpy()
-        
         output_dir.mkdir(parents=True, exist_ok=True)
         
+        x1, y1, x2, y2 = get_face_bbox(frames[0])
+        
         for i, frame in enumerate(frames):
-            # frame 已经是 RGB 格式
-            frame = crop_face_and_resize(frame, img_size)
+            cropped_frame = frame[y1:y2, x1:x2]
+            
+            if cropped_frame.size == 0:
+                cropped_frame = frame
+                
+            resized_frame = cv2.resize(cropped_frame, (img_size, img_size))
             
             save_path = output_dir / f"{Path(video_path).stem}_frame{i}.jpg"
-            cv2.imwrite(str(save_path), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        
+            cv2.imwrite(str(save_path), cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR))
         return True
-    except Exception as e:
-        print(f"Decord 处理失败 {video_path}: {e}")
+    except Exception:
         return False
 
 def extract_frames_opencv(video_path, output_dir, num_frames=4, img_size=224):
-    """使用 OpenCV 提取视频帧（fallback方案）"""
+    """使用 OpenCV 提取视频帧（首帧检测+全视频复用坐标）"""
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         return False
@@ -90,17 +85,34 @@ def extract_frames_opencv(video_path, output_dir, num_frames=4, img_size=224):
         return False
     
     frame_indices = np.linspace(0, total_frames - 1, num_frames, dtype=int)
-    
     output_dir.mkdir(parents=True, exist_ok=True)
+    
+    ret, first_frame = cap.read()
+    if not ret:
+        cap.release()
+        return False
+    
+    x1, y1, x2, y2 = get_face_bbox(cv2.cvtColor(first_frame, cv2.COLOR_BGR2RGB))
+    cap.release()
+    
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        return False
     
     for i, idx in enumerate(frame_indices):
         cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
         ret, frame = cap.read()
         if ret:
-            frame = crop_face_and_resize(frame, img_size)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            cropped_frame = frame_rgb[y1:y2, x1:x2]
+            
+            if cropped_frame.size == 0:
+                cropped_frame = frame_rgb
+                
+            resized_frame = cv2.resize(cropped_frame, (img_size, img_size))
             
             save_path = output_dir / f"{Path(video_path).stem}_frame{i}.jpg"
-            cv2.imwrite(str(save_path), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(str(save_path), cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR))
     
     cap.release()
     return True
