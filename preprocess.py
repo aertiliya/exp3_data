@@ -34,11 +34,14 @@ def get_face_bbox(frame):
         x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
         x, y, w, h = x * 2, y * 2, w * 2, h * 2
         
-        padding = int(w * 0.2)
-        x1 = max(0, x - padding)
-        y1 = max(0, y - padding)
-        x2 = min(frame.shape[1], x + w + padding)
-        y2 = min(frame.shape[0], y + h + padding)
+        pad_w = int(w * 0.25)
+        pad_h_top = int(h * 0.2)
+        pad_h_bottom = int(h * 0.6)
+        
+        x1 = max(0, x - pad_w)
+        y1 = max(0, y - pad_h_top)
+        x2 = min(frame.shape[1], x + w + pad_w)
+        y2 = min(frame.shape[0], y + h + pad_h_bottom)
         return (x1, y1, x2, y2)
     else:
         h, w, _ = frame.shape
